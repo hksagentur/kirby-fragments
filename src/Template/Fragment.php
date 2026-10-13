@@ -2,6 +2,7 @@
 
 namespace Hks\Fragments\Template;
 
+use Hks\Fragments\Cms\Options;
 use Hks\Fragments\Exception\FragmentException;
 use Kirby\Cms\App;
 use Kirby\Template\Snippet;
@@ -12,11 +13,6 @@ class Fragment
         protected string $name,
         protected array $data = [],
     ) {
-    }
-
-    public static function directory(): string
-    {
-        return trim(App::instance()->option('hksagentur.fragments.directory', 'fragments'), '/');
     }
 
     public static function factory(string $name, array $data = []): ?static
@@ -46,7 +42,7 @@ class Fragment
 
     public function snippet(): string
     {
-        return static::directory() . '/' . $this->name();
+        return Options::directory() . '/' . $this->name();
     }
 
     public function file(): ?string

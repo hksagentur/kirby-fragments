@@ -28,10 +28,12 @@ Download the project archive and copy the files to the plugin directory of your 
 Place a snippet in `site/snippets/fragments`. Its path below that directory is the fragment's name, so `site/snippets/fragments/lightbox/project.php` is served at `/fragments/lightbox/project`.
 
 ```php
-<?php /** @var ?\Kirby\Cms\Page $page */ ?>
+<?php /** @var \Kirby\Cms\Page|\Kirby\Cms\File|null $item */ ?>
+
+<?php $abortUnless($item instanceof ProjectPage, code: 404) ?>
 
 <ul>
-  <?php foreach ($page->images() as $image) : ?>
+  <?php foreach ($item->images() as $image) : ?>
     <li><?= $image ?></li>
   <?php endforeach ?>
 </ul>
@@ -41,16 +43,16 @@ Besides Kirby's usual `$kirby`, `$site` and `$pages`, a fragment receives:
 
 | Variable | Contents |
 | --- | --- |
-| `$page` | The published page named by the `page` query parameter, or `null` without one |
+| `$item` | The page or file named by the `item` query parameter, or `null` without one |
 | `$language` | The current language on multi-language sites, otherwise `null` |
 | `$abort`, `$abortIf`, `$abortUnless` | Helpers to cancel the response, see below |
 
 ### Requesting a fragment
 
-Fragments only answer requests that send the `X-Fragment` header. Everything else gets a `404`, so the URLs never compete with your pages.
+Fragments answer `GET` and `HEAD` requests that send the `X-Fragment` header. Everything else gets a `404`, so the URLs never compete with your pages.
 
 ```js
-const response = await fetch('/fragments/lightbox/project?page=projects/alpha', {
+const response = await fetch('/fragments/lightbox/project?item=page://9c4jq8wq3dc8r7wd', {
   headers: { 'X-Fragment': 'true' },
 });
 
@@ -58,7 +60,9 @@ const template = document.createElement('template');
 template.innerHTML = await response.text();
 ```
 
-Pass the page as its id, the way `page('projects/alpha')` would find it. Unknown or unpublished pages answer with a `404` before the snippet runs.
+Name the item by its [UUID](https://getkirby.com/docs/guide/uuids), e.g. from `$page->uuid()` or `$file->uuid()` in the template that renders the trigger. A UUID stays the same across languages and slug changes. Only `page://` and `file://` UUIDs are accepted; unknown ones, drafts and files of drafts answer with a `404` before the snippet runs.
+
+What the fragment does with the item is up to the snippet: check its type with `$abortUnless()`, and check any access rules your templates enforce — a fragment does not run the item's template or controller, so a page that is published but protected there (for example behind a login) is not protected here.
 
 On a multi-language site, request the fragment under the language's URL (for example `/en/fragments/…`) so it renders in that language. Build the URL on the server, e.g. with `url('fragments/lightbox/project')`, rather than in JavaScript.
 
@@ -68,7 +72,8 @@ On a multi-language site, request the fragment under the language's URL (for exa
 | --- | --- |
 | `200` | The fragment rendered markup |
 | `204` | The fragment rendered nothing — a valid, but empty result |
-| `404` | No fragment header, an unknown fragment or page, or `$abort()` without a code |
+| `404` | No fragment header, an unknown fragment or item, or `$abort()` without a code |
+| `500` | The snippet failed unexpectedly; in debug mode the body shows the error and its stack trace |
 | any | The code passed to `$abort()`, `$abortIf()` or `$abortUnless()` |
 
 Every response is `text/html`, carries `Vary: X-Fragment` and `X-Robots-Tag: noindex`, and is cached privately for five minutes by default.
@@ -78,11 +83,11 @@ Every response is `text/html`, carries `Vary: X-Fragment` and `X-Robots-Tag: noi
 A fragment can cancel its response when it cannot render anything meaningful, for example when it was requested for the wrong kind of page. Whatever the snippet printed before is discarded.
 
 ```php
-<?php $abortUnless($page instanceof ProjectPage, code: 404) ?>
+<?php $abortUnless($item instanceof ProjectPage, code: 404) ?>
 ```
 
 ```php
-<?php $abortIf($page->isExpired(), code: 410, message: 'The project has ended') ?>
+<?php $abortIf($item->isExpired(), code: 410, message: 'The project has ended') ?>
 ```
 
 ```php
@@ -100,6 +105,7 @@ return [
         'path' => 'fragments',
         'directory' => 'fragments',
         'header' => 'X-Fragment',
+        'parameter' => 'item',
         'cacheControl' => 'private, max-age=300',
     ],
 ];
@@ -110,6 +116,7 @@ return [
 | `path` | `fragments` | URL prefix fragments are served under |
 | `directory` | `fragments` | Snippet directory fragments are read from |
 | `header` | `X-Fragment` | Request header that marks a fragment request; also sent as `Vary` |
+| `parameter` | `item` | Query parameter that names the item by its UUID |
 | `cacheControl` | `private, max-age=300` | `Cache-Control` header of every response; `null` leaves it out |
 
 ## License

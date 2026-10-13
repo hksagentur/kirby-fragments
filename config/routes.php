@@ -1,18 +1,19 @@
 <?php
 
+use Hks\Fragments\Cms\Options;
 use Hks\Fragments\Http\FragmentController;
 use Hks\Fragments\Http\FragmentResponse;
 use Kirby\Cms\App;
 use Kirby\Cms\Language;
 
 return function (App $kirby): array {
-    $pattern = trim($kirby->option('hksagentur.fragments.path', 'fragments'), '/') . '/(:all)';
+    $path = Options::path();
 
     if ($kirby->multilang()) {
         return [
             [
-                'pattern' => $pattern,
-                'method' => 'GET',
+                'pattern' => "{$path}/(:all)",
+                'method' => 'GET|HEAD',
                 'language' => '*',
                 'action' => function (Language $language, string $name): FragmentResponse {
                     return (new FragmentController())($name, $language);
@@ -23,8 +24,8 @@ return function (App $kirby): array {
 
     return [
         [
-            'pattern' => $pattern,
-            'method' => 'GET',
+            'pattern' => "{$path}/(:all)",
+            'method' => 'GET|HEAD',
             'action' => function (string $name): FragmentResponse {
                 return (new FragmentController())($name);
             },

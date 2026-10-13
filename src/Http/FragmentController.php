@@ -2,12 +2,17 @@
 
 namespace Hks\Fragments\Http;
 
+use Hks\Fragments\Cms\Options;
 use Hks\Fragments\Exception\FragmentException;
 use Hks\Fragments\Template\Fragment;
 use Kirby\Cms\App;
+use Kirby\Cms\File;
 use Kirby\Cms\Language;
 use Kirby\Cms\Page;
 use Kirby\Http\Request;
+use Kirby\Toolkit\Escape;
+use Kirby\Uuid\Uuid;
+use Throwable;
 
 class FragmentController
 {
@@ -17,14 +22,25 @@ class FragmentController
             return new FragmentResponse($this->fragmentFor($name, $language)->render());
         } catch (FragmentException $exception) {
             return $exception->toResponse();
+        } catch (Throwable $exception) {
+            return new FragmentResponse($this->debugInfo($exception), 500);
         }
+    }
+
+    protected function isPublished(Page|File $item): bool
+    {
+        $page = $item instanceof File ? $item->page() : $item;
+
+        if (! $page) {
+            return true;
+        }
+
+        return $page->isPublished();
     }
 
     protected function wantsFragment(Request $request): bool
     {
-        $header = App::instance()->option('hksagentur.fragments.header');
-
-        return filter_var($request->header($header), FILTER_VALIDATE_BOOLEAN) === true;
+        return filter_var($request->header(Options::header()), FILTER_VALIDATE_BOOLEAN) === true;
     }
 
     /**
@@ -54,27 +70,36 @@ class FragmentController
     {
         return [
             'language' => $language,
-            'page' => $this->pageFor($request),
+            'item' => $this->itemFor($request),
         ];
     }
 
     /**
      * @throws FragmentException
      */
-    protected function pageFor(Request $request): ?Page
+    protected function itemFor(Request $request): Page|File|null
     {
-        $id = $request->get('page');
+        $uuid = $request->get(Options::parameter());
 
-        if (! $id) {
+        if (! $uuid) {
             return null;
         }
 
-        $page = App::instance()->site()->find($id);
+        $item = Uuid::is($uuid, ['page', 'file']) ? Uuid::for($uuid)?->model() : null;
 
-        if (! $page || ! $page->isPublished()) {
-            throw new FragmentException(message: "The page \"{$id}\" does not exist");
+        if (! ($item instanceof Page || $item instanceof File) || ! $this->isPublished($item)) {
+            throw new FragmentException(message: "The item \"{$uuid}\" does not exist");
         }
 
-        return $page;
+        return $item;
+    }
+
+    protected function debugInfo(Throwable $exception): string
+    {
+        if (App::instance()->option('debug') !== true) {
+            return '';
+        }
+
+        return '<pre>' . Escape::html((string) $exception) . '</pre>';
     }
 }
