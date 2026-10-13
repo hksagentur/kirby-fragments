@@ -7,7 +7,6 @@ use Hks\Fragments\Exception\FragmentException;
 use Hks\Fragments\Template\Fragment;
 use Kirby\Cms\App;
 use Kirby\Cms\File;
-use Kirby\Cms\Language;
 use Kirby\Cms\Page;
 use Kirby\Http\Request;
 use Kirby\Toolkit\Escape;
@@ -16,10 +15,10 @@ use Throwable;
 
 class FragmentController
 {
-    public function __invoke(string $name, ?Language $language = null): FragmentResponse
+    public function __invoke(string $name): FragmentResponse
     {
         try {
-            return new FragmentResponse($this->fragmentFor($name, $language)->render());
+            return new FragmentResponse($this->fragmentFor($name)->render());
         } catch (FragmentException $exception) {
             return $exception->toResponse();
         } catch (Throwable $exception) {
@@ -46,7 +45,7 @@ class FragmentController
     /**
      * @throws FragmentException
      */
-    protected function fragmentFor(string $name, ?Language $language): Fragment
+    protected function fragmentFor(string $name): Fragment
     {
         $request = App::instance()->request();
 
@@ -54,7 +53,7 @@ class FragmentController
             throw new FragmentException(message: 'The request does not ask for a fragment');
         }
 
-        $fragment = Fragment::factory($name, $this->dataFor($request, $language));
+        $fragment = Fragment::factory($name, $this->dataFor($request));
 
         if (! $fragment) {
             throw new FragmentException(message: "The fragment \"{$name}\" does not exist");
@@ -66,10 +65,10 @@ class FragmentController
     /**
      * @throws FragmentException
      */
-    protected function dataFor(Request $request, ?Language $language): array
+    protected function dataFor(Request $request): array
     {
         return [
-            'language' => $language,
+            'language' => App::instance()->language(),
             'item' => $this->itemFor($request),
         ];
     }
