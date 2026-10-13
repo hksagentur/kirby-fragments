@@ -1,0 +1,40 @@
+{
+  "name": "hksagentur/kirby-fragments",
+  "description": "Serve snippets as HTML fragments for progressive enhancement in Kirby CMS",
+  "type": "kirby-plugin",
+  "license": "ISC",
+  "authors": [
+    {
+      "name": "Daniel Weidner",
+      "email": "d.weidner@hks-agentur.de",
+      "homepage": "https://hks-agentur.de"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Hks\\Fragments\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=8.2.0",
+    "getkirby/composer-installer": "^1.2"
+  },
+  "require-dev": {
+    "getkirby/cms": "^5.5",
+    "laravel/pint": "^1.30"
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "allow-plugins": {
+      "getkirby/composer-installer": true
+    }
+  },
+  "scripts": {
+    "format": "pint --verbose",
+    "lint": "pint --verbose --test"
+  },
+  "extra": {
+    "installer-name": "fragments",
+    "kirby-cms-path": false
+  }
+}
