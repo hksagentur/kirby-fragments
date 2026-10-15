@@ -30,11 +30,11 @@ class FragmentController
     {
         $page = $item instanceof File ? $item->page() : $item;
 
-        if (! $page) {
-            return true;
+        if (! $page?->isPublished()) {
+            return false;
         }
 
-        return $page->isPublished();
+        return $page->parents()->filterBy('isDraft', true)->isEmpty();
     }
 
     protected function wantsFragment(Request $request): bool
@@ -80,14 +80,22 @@ class FragmentController
     {
         $uuid = $request->get(Options::parameter());
 
-        if (! $uuid) {
+        if ($uuid === null || $uuid === '') {
             return null;
         }
 
-        $item = Uuid::is($uuid, ['page', 'file']) ? Uuid::for($uuid)?->model() : null;
+        if (! is_string($uuid) || ! Uuid::is($uuid, ['page', 'file'])) {
+            throw new FragmentException(message: 'The item is not a valid uuid');
+        }
 
-        if (! ($item instanceof Page || $item instanceof File) || ! $this->isPublished($item)) {
+        $item = Uuid::for($uuid)?->model();
+
+        if (! $item) {
             throw new FragmentException(message: "The item \"{$uuid}\" does not exist");
+        }
+
+        if (! $this->isPublished($item)) {
+            throw new FragmentException(message: "The item \"{$uuid}\" is not published");
         }
 
         return $item;
