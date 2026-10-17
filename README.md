@@ -117,7 +117,7 @@ return [
 | `directory` | `fragments` | Snippet directory fragments are read from |
 | `header` | `X-Fragment` | Request header that marks a fragment request; also sent as `Vary` |
 | `parameter` | `item` | Query parameter that names the item by its UUID |
-| `cacheControl` | `private, max-age=300` | `Cache-Control` header of every response; `null` leaves it out |
+| `cacheControl` | `private, max-age=300` | `Cache-Control` header of successful responses, with a matching `Expires`; errors always send `no-store`; `null` leaves both out |
 
 ## License
 
