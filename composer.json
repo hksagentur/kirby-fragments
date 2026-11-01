@@ -21,7 +21,7 @@
   },
   "require-dev": {
     "getkirby/cms": "^5.5",
-    "laravel/pint": "^1.30"
+    "laravel/pint": "^1.32"
   },
   "config": {
     "optimize-autoloader": true,
