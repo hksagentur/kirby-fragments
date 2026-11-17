@@ -70,6 +70,7 @@ class FragmentController
         return [
             'language' => App::instance()->language(),
             'item' => $this->itemFor($request),
+            'query' => $request->query(),
         ];
     }
 
@@ -91,11 +92,11 @@ class FragmentController
         $item = Uuid::for($uuid)?->model();
 
         if (! $item) {
-            throw new FragmentException(message: "The item \"{$uuid}\" does not exist");
+            throw new FragmentException(httpCode: 410, message: "The item \"{$uuid}\" does not exist");
         }
 
         if (! $this->isPublished($item)) {
-            throw new FragmentException(message: "The item \"{$uuid}\" is not published");
+            throw new FragmentException(httpCode: 410, message: "The item \"{$uuid}\" is not published");
         }
 
         return $item;

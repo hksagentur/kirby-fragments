@@ -44,6 +44,7 @@ Besides Kirby's usual `$kirby`, `$site` and `$pages`, a fragment receives:
 | Variable | Contents |
 | --- | --- |
 | `$item` | The page or file named by the `item` query parameter, or `null` without one |
+| `$query` | The query parameters of the request (`Kirby\Http\Query`), e.g. `$query->get('q')` |
 | `$language` | The current language on multi-language sites, otherwise `null` |
 | `$abort`, `$abortIf`, `$abortUnless` | Helpers to cancel the response, see below |
 
@@ -60,7 +61,7 @@ const template = document.createElement('template');
 template.innerHTML = await response.text();
 ```
 
-Name the item by its [UUID](https://getkirby.com/docs/guide/uuids), e.g. from `$page->uuid()` or `$file->uuid()` in the template that renders the trigger. A UUID stays the same across languages and slug changes. Only `page://` and `file://` UUIDs are accepted; unknown ones, drafts and files of drafts answer with a `404` before the snippet runs.
+Name the item by its [UUID](https://getkirby.com/docs/guide/uuids), e.g. from `$page->uuid()` or `$file->uuid()` in the template that renders the trigger. A UUID stays the same across languages and slug changes. Only `page://` and `file://` UUIDs are accepted; anything else answers with a `404`. A valid UUID whose page or file no longer exists or is not published (a draft, or a file of a draft) answers with a `410` before the snippet runs, so a script can forget an item it saved earlier instead of retrying it.
 
 What the fragment does with the item is up to the snippet: check its type with `$abortUnless()`, and check any access rules your templates enforce — a fragment does not run the item's template or controller, so a page that is published but protected there (for example behind a login) is not protected here.
 
@@ -72,7 +73,8 @@ On a multi-language site, request the fragment under the language's URL (for exa
 | --- | --- |
 | `200` | The fragment rendered markup |
 | `204` | The fragment rendered nothing — a valid, but empty result |
-| `404` | No fragment header, an unknown fragment or item, or `$abort()` without a code |
+| `404` | No fragment header, an unknown fragment, an `item` that is no page or file UUID, or `$abort()` without a code |
+| `410` | The `item` names a page or file that no longer exists or is not published |
 | `500` | The snippet failed unexpectedly; in debug mode the body shows the error and its stack trace |
 | any | The code passed to `$abort()`, `$abortIf()` or `$abortUnless()` |
 
