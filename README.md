@@ -47,6 +47,7 @@ Besides Kirby's usual `$kirby`, `$site` and `$pages`, a fragment receives:
 | `$query` | The query parameters of the request (`Kirby\Http\Query`), e.g. `$query->get('q')` |
 | `$language` | The current language on multi-language sites, otherwise `null` |
 | `$abort`, `$abortIf`, `$abortUnless` | Helpers to cancel the response, see below |
+| `$cacheFor` | Helper to set how long the response may be cached, see below |
 
 ### Requesting a fragment
 
@@ -78,7 +79,7 @@ On a multi-language site, request the fragment under the language's URL (for exa
 | `500` | The snippet failed unexpectedly; in debug mode the body shows the error and its stack trace |
 | any | The code passed to `$abort()`, `$abortIf()` or `$abortUnless()` |
 
-Every response is `text/html`, carries `Vary: X-Fragment` and `X-Robots-Tag: noindex`, and is cached privately for five minutes by default.
+Every response is `text/html`, carries `Vary: X-Fragment` and `X-Robots-Tag: noindex`, and is cached privately for five minutes by default (see `$cacheFor()` below and the `cacheControl` option).
 
 ### Cancelling a fragment
 
@@ -96,7 +97,25 @@ A fragment can cancel its response when it cannot render anything meaningful, fo
 <?php $abort(code: 403) ?>
 ```
 
-The message is optional and only surfaces in logs and debugging; the response body stays empty.
+The message is optional and only meant for logs and debugging, prefixed with the fragment's name (`The fragment "lightbox/project" was aborted: The project has ended`); the response body stays empty.
+
+### Caching a fragment
+
+A fragment can decide for itself how long a browser may reuse its response. Call `$cacheFor()` with the number of seconds:
+
+```php
+<?php $cacheFor(3600) ?>
+```
+
+The response then sends `Cache-Control: private, max-age=3600` instead of the `cacheControl` option. `0` sends `private, no-cache`: the browser may store the response, but has to ask the server again every time. Use it when a script acts on what the fragment lists, for example forgets items that are missing from it, so a cached copy can't make it forget an item published in the meantime.
+
+```php
+<?php $cacheFor(0) ?>
+```
+
+Called more than once, the shortest duration wins, so a branch of the snippet can shorten it without knowing the others. A negative value is an error. Errors and cancelled responses are never cached, whatever the fragment set.
+
+A fragment that reads a cookie or the session (for example through `csrf()` or `$kirby->user()`) or checks the `Authorization` header follows Kirby's own rule for such responses: if the visitor sent that cookie or header, the response is `no-store, private`, whatever `$cacheFor()` said; otherwise it adds `Cookie` or `Authorization` to `Vary`, so the browser doesn't reuse it once the visitor has one.
 
 ## Options
 
@@ -119,7 +138,7 @@ return [
 | `directory` | `fragments` | Snippet directory fragments are read from |
 | `header` | `X-Fragment` | Request header that marks a fragment request; also sent as `Vary` |
 | `parameter` | `item` | Query parameter that names the item by its UUID |
-| `cacheControl` | `private, max-age=300` | `Cache-Control` header of successful responses, with a matching `Expires`; errors always send `no-store`; `null` leaves both out |
+| `cacheControl` | `private, max-age=300` | `Cache-Control` header of successful responses, with a matching `Expires`, unless the fragment calls `$cacheFor()`; errors always send `no-store`; `null` leaves both out |
 
 ## License
 

@@ -9,38 +9,73 @@ class FragmentResponse extends Response
 {
     public function __construct(
         string $body = '',
-        ?int $code = null
+        ?int $code = null,
+        array $headers = [],
     ) {
         $code ??= empty($body) ? 204 : 200;
 
-        $cacheControl = match (true) {
-            $code >= 400 => 'no-store',
-            default => Options::cacheControl(),
-        };
+        $defaults = [
+            'Cache-Control' => static::cacheControlFor($code),
+            'Vary' => Options::header(),
+            'X-Robots-Tag' => 'noindex',
+        ];
+
+        $headers = static::withExpires([
+            ...$defaults,
+            ...static::normalizeHeaders($headers),
+        ]);
 
         parent::__construct(
             body: $body,
             type: 'text/html',
             code: $code,
-            headers: array_filter([
-                'Cache-Control' => $cacheControl,
-                'Expires' => static::expiresFor($cacheControl),
-                'Vary' => Options::header(),
-                'X-Robots-Tag' => 'noindex',
-            ]),
+            headers: array_filter($headers),
         );
     }
 
-    protected static function expiresFor(?string $cacheControl): ?string
+    protected static function normalizeHeaders(array $headers): array
     {
-        if ($cacheControl === null) {
+        $normalized = [];
+
+        foreach ($headers as $name => $value) {
+            $normalized[ucwords(strtolower($name), '-')] = $value;
+        }
+
+        return $normalized;
+    }
+
+    protected static function withExpires(array $headers): array
+    {
+        $cacheControl = $headers['Cache-Control'] ?? null;
+
+        if (! $cacheControl || array_key_exists('Expires', $headers)) {
+            return $headers;
+        }
+
+        $maxAge = static::maxAgeOf($cacheControl);
+
+        $expiresAt = match (true) {
+            is_integer($maxAge) => $maxAge + time(),
+            default => 0,
+        };
+
+        return [
+            ...$headers,
+            'Expires' => gmdate('D, d M Y H:i:s \G\M\T', $expiresAt),
+        ];
+    }
+
+    protected static function cacheControlFor(int $code): ?string
+    {
+        return $code >= 400 ? 'no-store' : Options::cacheControl();
+    }
+
+    protected static function maxAgeOf(string $cacheControl): ?int
+    {
+        if (! preg_match('/\bmax-age=(\d+)/', $cacheControl, $matches)) {
             return null;
         }
 
-        if (! preg_match('/max-age=(\d+)/', $cacheControl, $matches)) {
-            return gmdate('D, d M Y H:i:s \G\M\T', 0);
-        }
-
-        return gmdate('D, d M Y H:i:s \G\M\T', time() + (int) $matches[1]);
+        return (int) $matches[1];
     }
 }

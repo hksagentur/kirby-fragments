@@ -5,10 +5,13 @@ namespace Hks\Fragments\Template;
 use Hks\Fragments\Cms\Options;
 use Hks\Fragments\Exception\FragmentException;
 use Kirby\Cms\App;
+use Kirby\Exception\InvalidArgumentException;
 use Kirby\Template\Snippet;
 
 class Fragment
 {
+    protected ?int $cacheDuration = null;
+
     public function __construct(
         protected string $name,
         protected array $data = [],
@@ -40,6 +43,11 @@ class Fragment
         return $this->name;
     }
 
+    public function cacheDuration(): ?int
+    {
+        return $this->cacheDuration;
+    }
+
     public function snippet(): string
     {
         return Options::directory() . '/' . $this->name();
@@ -61,9 +69,10 @@ class Fragment
     public function snippetHelpers(): array
     {
         return [
-            'abort' => static::abort(...),
-            'abortIf' => static::abortIf(...),
-            'abortUnless' => static::abortUnless(...),
+            'abort' => $this->abort(...),
+            'abortIf' => $this->abortIf(...),
+            'abortUnless' => $this->abortUnless(...),
+            'cacheFor' => $this->cacheFor(...),
         ];
     }
 
@@ -92,22 +101,39 @@ class Fragment
         return preg_match('!^[\w-]+(/[\w-]+)*$!', $name) === 1;
     }
 
-    protected static function abort(int $code, ?string $message = null): never
+    protected function abort(int $code, ?string $message = null): never
     {
-        throw new FragmentException(httpCode: $code, message: $message);
+        $reason = $message === null ? '' : ": {$message}";
+
+        throw new FragmentException(
+            httpCode: $code,
+            message: "The fragment \"{$this->name()}\" was aborted{$reason}",
+        );
     }
 
-    protected static function abortIf(bool $condition, int $code, ?string $message = null): void
+    protected function abortIf(bool $condition, int $code, ?string $message = null): void
     {
         if ($condition) {
-            static::abort($code, $message);
+            $this->abort($code, $message);
         }
     }
 
-    protected static function abortUnless(bool $condition, int $code, ?string $message = null): void
+    protected function abortUnless(bool $condition, int $code, ?string $message = null): void
     {
         if (! $condition) {
-            static::abort($code, $message);
+            $this->abort($code, $message);
         }
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    protected function cacheFor(int $seconds): void
+    {
+        if ($seconds < 0) {
+            throw new InvalidArgumentException(message: 'The cache duration must not be negative');
+        }
+
+        $this->cacheDuration = min($this->cacheDuration ?? $seconds, $seconds);
     }
 }

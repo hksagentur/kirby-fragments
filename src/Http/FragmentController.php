@@ -8,6 +8,7 @@ use Hks\Fragments\Template\Fragment;
 use Kirby\Cms\App;
 use Kirby\Cms\File;
 use Kirby\Cms\Page;
+use Kirby\Cms\Responder;
 use Kirby\Http\Request;
 use Kirby\Toolkit\Escape;
 use Kirby\Uuid\Uuid;
@@ -18,7 +19,12 @@ class FragmentController
     public function __invoke(string $name): FragmentResponse
     {
         try {
-            return new FragmentResponse($this->fragmentFor($name)->render());
+            $fragment = $this->fragmentFor($name);
+
+            return new FragmentResponse(
+                body: $fragment->render(),
+                headers: $this->headersFor($fragment),
+            );
         } catch (FragmentException $exception) {
             return $exception->toResponse();
         } catch (Throwable $exception) {
@@ -100,6 +106,43 @@ class FragmentController
         }
 
         return $item;
+    }
+
+    protected function headersFor(Fragment $fragment): array
+    {
+        $responder = App::instance()->response();
+
+        return array_filter([
+            'Cache-Control' => $this->cacheControlFor($fragment, $responder),
+            'Vary' => $this->varyFor($responder),
+        ]);
+    }
+
+    protected function cacheControlFor(Fragment $fragment, Responder $responder): ?string
+    {
+        $private = Responder::isPrivate(
+            $responder->usesAuth(),
+            $responder->usesCookies(),
+        );
+
+        if ($private) {
+            return 'no-store, private';
+        }
+
+        return match ($duration = $fragment->cacheDuration()) {
+            null => null,
+            0 => 'private, no-cache',
+            default => "private, max-age={$duration}",
+        };
+    }
+
+    protected function varyFor(Responder $responder): string
+    {
+        return implode(', ', array_filter([
+            Options::header(),
+            $responder->usesAuth() ? 'Authorization' : null,
+            $responder->usesCookies() !== [] ? 'Cookie' : null,
+        ]));
     }
 
     protected function debugInfo(Throwable $exception): string
