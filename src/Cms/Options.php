@@ -7,19 +7,14 @@ use Kirby\Plugin\Plugin;
 
 final class Options
 {
-    public static function path(): string
+    public static function routePrefix(): string
     {
-        return trim(static::option('path'), '/');
+        return trim(static::option('route'), '/');
     }
 
-    public static function directory(): string
+    public static function snippetDirectory(): string
     {
-        return trim(static::option('directory'), '/');
-    }
-
-    public static function parameter(): string
-    {
-        return static::option('parameter');
+        return trim(static::option('snippets'), '/');
     }
 
     public static function mediaType(): string
@@ -30,6 +25,20 @@ final class Options
     public static function cacheControl(): ?string
     {
         return static::option('cacheControl');
+    }
+
+    /**
+     * @param 'item'|'items' $key
+     */
+    public static function queryParameter(string $key): string
+    {
+        $parameters = static::option('query');
+
+        if (! $parameters) {
+            return $key;
+        }
+
+        return $parameters[$key] ?? $key;
     }
 
     protected static function plugin(): Plugin

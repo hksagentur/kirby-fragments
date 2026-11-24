@@ -50,7 +50,7 @@ class Fragment
 
     public function snippet(): string
     {
-        return Options::directory() . '/' . $this->name();
+        return Options::snippetDirectory() . '/' . $this->name();
     }
 
     public function file(): ?string

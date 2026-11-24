@@ -7,7 +7,7 @@ use Hks\Fragments\Http\FragmentResponse;
 return function (): array {
     return [
         [
-            'pattern' => Options::path() . '/(:all)',
+            'pattern' => Options::routePrefix() . '/(:all)',
             'method' => 'GET|HEAD',
             'language' => '*',
             'action' => function (): FragmentResponse {

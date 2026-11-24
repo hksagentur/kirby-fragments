@@ -2,9 +2,12 @@
 
 Kirby::plugin('hksagentur/fragments', [
     'options' => [
-        'directory' => 'fragments',
-        'path' => 'fragments',
-        'parameter' => 'item',
+        'route' => 'fragments',
+        'snippets' => 'fragments',
+        'query' => [
+            'item' => 'item',
+            'items' => 'items',
+        ],
         'mediaType' => 'text/vnd.hksagentur.fragment',
         'cacheControl' => 'private, max-age=300',
     ],
