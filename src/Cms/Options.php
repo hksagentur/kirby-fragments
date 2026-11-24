@@ -17,14 +17,14 @@ final class Options
         return trim(static::option('directory'), '/');
     }
 
-    public static function header(): string
-    {
-        return static::option('header');
-    }
-
     public static function parameter(): string
     {
         return static::option('parameter');
+    }
+
+    public static function mediaType(): string
+    {
+        return static::option('mediaType');
     }
 
     public static function cacheControl(): ?string

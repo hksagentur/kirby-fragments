@@ -11,6 +11,7 @@ use Kirby\Cms\Page;
 use Kirby\Cms\Responder;
 use Kirby\Http\Request;
 use Kirby\Toolkit\Escape;
+use Kirby\Toolkit\Str;
 use Kirby\Uuid\Uuid;
 use Throwable;
 
@@ -45,7 +46,15 @@ class FragmentController
 
     protected function wantsFragment(Request $request): bool
     {
-        return filter_var($request->header(Options::header()), FILTER_VALIDATE_BOOLEAN) === true;
+        $mediaType = Str::lower(Options::mediaType());
+
+        foreach (Str::accepted((string) $request->header('Accept')) as $accepted) {
+            if (Str::lower($accepted['value']) === $mediaType) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -139,7 +148,7 @@ class FragmentController
     protected function varyFor(Responder $responder): string
     {
         return implode(', ', array_filter([
-            Options::header(),
+            'Accept',
             $responder->usesAuth() ? 'Authorization' : null,
             $responder->usesCookies() !== [] ? 'Cookie' : null,
         ]));

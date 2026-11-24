@@ -16,7 +16,7 @@ class FragmentResponse extends Response
 
         $defaults = [
             'Cache-Control' => static::cacheControlFor($code),
-            'Vary' => Options::header(),
+            'Vary' => 'Accept',
             'X-Robots-Tag' => 'noindex',
         ];
 
@@ -27,7 +27,7 @@ class FragmentResponse extends Response
 
         parent::__construct(
             body: $body,
-            type: 'text/html',
+            type: Options::mediaType(),
             code: $code,
             headers: array_filter($headers),
         );

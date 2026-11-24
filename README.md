@@ -51,15 +51,23 @@ Besides Kirby's usual `$kirby`, `$site` and `$pages`, a fragment receives:
 
 ### Requesting a fragment
 
-Fragments answer `GET` and `HEAD` requests that send the `X-Fragment` header. Everything else gets a `404`, so the URLs never compete with your pages.
+Fragments answer `GET` and `HEAD` requests whose `Accept` header names the fragment media type, `text/vnd.hksagentur.fragment` by default. Everything else gets a `404`, so the URLs never compete with your pages. This is plain content negotiation: proxies, caches and CORS handle `Accept` without extra configuration, unlike a custom header such as `X-Requested-With`. The media type is a vendor type of its own, like Turbo's `text/vnd.turbo-stream.html`, because a fragment is HTML without a document around it; it has to be named exactly, so a browser's `*/*` never matches.
 
 ```js
 const response = await fetch('/fragments/lightbox/project?item=page://9c4jq8wq3dc8r7wd', {
-  headers: { 'X-Fragment': 'true' },
+  headers: { Accept: 'text/vnd.hksagentur.fragment' },
 });
 
 const template = document.createElement('template');
 template.innerHTML = await response.text();
+```
+
+GitHub's [`<include-fragment>`](https://github.com/github/include-fragment-element) sends its `accept` attribute as the `Accept` header and checks that the response's `Content-Type` contains it, which the plugin's responses do:
+
+```html
+<include-fragment src="/fragments/lightbox/project?item=page://9c4jq8wq3dc8r7wd" accept="text/vnd.hksagentur.fragment" loading="lazy">
+  <p>Loading…</p>
+</include-fragment>
 ```
 
 Name the item by its [UUID](https://getkirby.com/docs/guide/uuids), e.g. from `$page->uuid()` or `$file->uuid()` in the template that renders the trigger. A UUID stays the same across languages and slug changes. Only `page://` and `file://` UUIDs are accepted; anything else answers with a `404`. A valid UUID whose page or file no longer exists or is not published (a draft, or a file of a draft) answers with a `410` before the snippet runs, so a script can forget an item it saved earlier instead of retrying it.
@@ -74,12 +82,12 @@ On a multi-language site, request the fragment under the language's URL (for exa
 | --- | --- |
 | `200` | The fragment rendered markup |
 | `204` | The fragment rendered nothing — a valid, but empty result |
-| `404` | No fragment header, an unknown fragment, an `item` that is no page or file UUID, or `$abort()` without a code |
+| `404` | No fragment media type in `Accept`, an unknown fragment, an `item` that is no page or file UUID, or `$abort()` without a code |
 | `410` | The `item` names a page or file that no longer exists or is not published |
 | `500` | The snippet failed unexpectedly; in debug mode the body shows the error and its stack trace |
 | any | The code passed to `$abort()`, `$abortIf()` or `$abortUnless()` |
 
-Every response is `text/html`, carries `Vary: X-Fragment` and `X-Robots-Tag: noindex`, and is cached privately for five minutes by default (see `$cacheFor()` below and the `cacheControl` option).
+Every response has the fragment media type as `Content-Type` (`text/vnd.hksagentur.fragment; charset=UTF-8`), carries `Vary: Accept` and `X-Robots-Tag: noindex`, and is cached privately for five minutes by default (see `$cacheFor()` below and the `cacheControl` option).
 
 ### Cancelling a fragment
 
@@ -125,7 +133,7 @@ return [
     'hksagentur.fragments' => [
         'path' => 'fragments',
         'directory' => 'fragments',
-        'header' => 'X-Fragment',
+        'mediaType' => 'text/vnd.hksagentur.fragment',
         'parameter' => 'item',
         'cacheControl' => 'private, max-age=300',
     ],
@@ -136,7 +144,7 @@ return [
 | --- | --- | --- |
 | `path` | `fragments` | URL prefix fragments are served under |
 | `directory` | `fragments` | Snippet directory fragments are read from |
-| `header` | `X-Fragment` | Request header that marks a fragment request; also sent as `Vary` |
+| `mediaType` | `text/vnd.hksagentur.fragment` | Media type a request must name in `Accept` to get a fragment (compared exactly, ignoring case and `q`; wildcards don't count); also the `Content-Type` of every response |
 | `parameter` | `item` | Query parameter that names the item by its UUID |
 | `cacheControl` | `private, max-age=300` | `Cache-Control` header of successful responses, with a matching `Expires`, unless the fragment calls `$cacheFor()`; errors always send `no-store`; `null` leaves both out |
 
